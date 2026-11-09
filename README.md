@@ -10,6 +10,7 @@ Skills for Claude Code that make animations for reels, with no footage needed. Y
 | `/stick-figure` | **A stick-figure explainer reel.** A bright cartoon world, stick people with big faces, whip transitions, 1 to 2 word captions, and music and sound effects made in code. Comes with a finished 37 s example. | `Why did pirates wear eye patches?` |
 | `/minimalistic-graphics` | **Black-and-white line art.** Hairline steps rise, one white dot hops up them and gets an orbit at the top, with one quiet line of text. | `Every step feels small until you look back` |
 | `/map-route` | **A 3D map route.** A white city, a route that draws itself while the camera follows, a pin drop, an ETA that counts down and a destination card. | `Home to the gym, 2.8 km` |
+| `/city-globe` | **A "comment your city" globe.** A dotted globe turns once while a line flies from your home to every commenter's city, each pin lands with the city and @handle, and a counter ticks up. With no cities it makes the teaser. | `Midtown NYC, this week's comments: …` |
 | `/breakdown` | **A 3D exploded view.** A phone comes apart layer by layer, and every part gets a leader line and a label. | `My phone, every part labelled` |
 | `/graph` | **A minimal line graph.** A smooth line draws itself, and one big number counts up with its tip. Black on white, or white on black. | `0 to 100K followers in 9 months` |
 
@@ -49,13 +50,14 @@ Open Claude Code anywhere and ask:
 ```
 /graph 0 to 100K followers in 9 months: 1.2K, 2.1K, 3.4K, 5K, 9K, 24K, 51K, 78K, 100K
 /map-route home to the gym, 2.8 km, 9 minutes
+/city-globe from Midtown NYC, week 1: (paste the comments)
 /minimalistic-graphics every step feels small until you look back
 /breakdown my phone, label it like a joke
 /stick-figure why did pirates wear eye patches?
 /zach-d-films could ancient armour stop an arrow? (my voiceover is ~/Downloads/vo.m4a)
 ```
 
-**The four quick ones** (`/graph`, `/minimalistic-graphics`, `/map-route`, `/breakdown`) work from a small JSON spec. Claude writes `name.graph.json`, runs the skill's `build.py`, and you get `name.graph.mp4` (1080x1920, 30 fps) plus `name.graph.sheet.jpg`, a contact sheet with Instagram's safe area marked. The 2D ones render in about 10 seconds, the 3D ones in about 1.5 minutes.
+**The five quick ones** (`/graph`, `/minimalistic-graphics`, `/map-route`, `/city-globe`, `/breakdown`) work from a small JSON spec. Claude writes `name.graph.json`, runs the skill's `build.py`, and you get `name.graph.mp4` (1080x1920, 30 fps) plus `name.graph.sheet.jpg`, a contact sheet with Instagram's safe area marked. The 2D ones render in about 10 seconds, the 3D ones in about 1.5 minutes (`/city-globe`, 12 s long, about 3).
 
 **The two engines** (`/stick-figure`, `/zach-d-films`) are full explainer reels. Claude copies the example project, writes the script with you, makes or takes the voiceover, times every caption to it, writes the shots in code, checks stills, and renders. Plan on a working session, not one command.
 
