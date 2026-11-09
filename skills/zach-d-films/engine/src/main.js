@@ -6,6 +6,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { SHOTS, CAPTIONS, DURATION, FADES } from './shots.js';
+import { FLOOR } from './human.js';
 
 const W = 720, H = 1280;
 const renderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: true, powerPreference: 'high-performance' });
@@ -65,7 +66,7 @@ export function makeStage({ shadowSize = 3, sunDir = [-3, 6, 4], sun = 2.3 } = {
   sky.frustumCulled = false; sky.renderOrder = -10;
   scene.add(sky); scene.userData.sky = sky;
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), new THREE.ShadowMaterial({ color: 0x1a3a66, opacity: 0.32 }));
-  ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+  ground.rotation.x = -Math.PI / 2; ground.position.y = FLOOR; ground.receiveShadow = true; scene.add(ground);
   const hemi = new THREE.HemisphereLight(0xcfe4ff, 0x7f93ad, 0.75); scene.add(hemi);
   const key = new THREE.DirectionalLight(0xfff3e6, sun);
   key.position.set(...sunDir); key.castShadow = true;

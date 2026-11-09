@@ -21,6 +21,12 @@ export function torsoR(y) {
 }
 export const TORSO_SX = 1.13, TORSO_SZ = 0.66;
 
+// Height. People are about 1.70 m. The hips stay at 0.95 so chests and heads sit where the shots
+// aim and frame them; the legs are shorter than that, so feet stand on FLOOR (makeStage puts the
+// ground there). To change height, change THIGH/SHIN and FLOOR follows.
+const THIGH = 0.39, SHIN = 0.40;
+export const FLOOR = 0.95 - 0.06 - THIGH - SHIN;
+
 // Lathe shell following the torso. offset(y) can be number or function.
 export function torsoShell(y0, y1, offset, { ridge = 0, segs = 72, rows = 40, flare = 0 } = {}) {
   const pts = [];
@@ -152,11 +158,11 @@ export function makeHuman(outfit = 'plate', opts = {}) {
     j[k + 'Sh'] = sh; j[k + 'El'] = el; j[k + 'Wr'] = wr;
     // legs
     const hip = new THREE.Group(); hip.position.set(s * 0.095, -0.06, 0); pelvis.add(hip);
-    hip.add(cap(0.078 + thick, 0.34, legMat));
-    const kn = new THREE.Group(); kn.position.y = -0.44; hip.add(kn);
+    hip.add(cap(0.078 + thick, THIGH - 0.1, legMat));
+    const kn = new THREE.Group(); kn.position.y = -THIGH; hip.add(kn);
     kn.add(sph(0.06 + thick, legMat));
-    kn.add(cap(0.056 + thick, 0.36, legMat));
-    const an = new THREE.Group(); an.position.y = -0.45; kn.add(an);
+    kn.add(cap(0.056 + thick, SHIN - 0.09, legMat));
+    const an = new THREE.Group(); an.position.y = -SHIN; kn.add(an);
     const footMat = knight ? M.steel : (outfit === 'archer' ? M.cloth : M.skin);
     const ank = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.045, 0.11, 20), footMat); ank.position.y = 0.0; an.add(ank);
     if (!knight) { const cuff = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.05, 20), legMat); cuff.position.y = 0.045; an.add(cuff); }

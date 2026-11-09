@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { makeHuman, standArmor } from './human.js';
+import { makeHuman, standArmor, FLOOR } from './human.js';
 import { gunArm, bullet, sword, shield, mace, arrow, bow, stand, glowSprite, sparks, streak, rippleOverlay } from './props.js';
 import { materials } from './materials.js';
 import { kf, lerp, smooth, easeOut, easeIn, easeInOut, range, clamp, V, cam, place, shake, ikArm } from './anim.js';
@@ -393,8 +393,9 @@ function shot9({ makeStage }) {
   const scene = makeStage({ shadowSize: 3, sunDir: [-2, 6, 4] });
   const yaw = -0.95;
   const mk = (kind, x) => {
-    const st = stand(); st.position.set(x, 0, 0); st.rotation.y = yaw; scene.add(st);
-    const a = standArmor(kind); a.group.position.y = 0.93; st.add(a.group);
+    // the stand rises from the floor; the armour stays at the height the bullet path expects
+    const st = stand(); st.position.set(x, FLOOR, 0); st.scale.y = (1.5 - FLOOR) / 1.5; st.rotation.y = yaw; scene.add(st);
+    const a = standArmor(kind); a.group.position.set(x, 0.93, 0); a.group.rotation.y = yaw; scene.add(a.group);
     return a;
   };
   const plate = mk('plate', 0), mail = mk('mail', 1.15);
