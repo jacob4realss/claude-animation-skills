@@ -29,7 +29,7 @@ Needs ffmpeg and Node. It renders with WebGL in headless Chrome.
 1. **Fruit and rounds.** Ask which fruit and how far the counter goes. The default rounds are 1, 2, 4, 8, 16, 32, 100, 1,000, 10,000 cuts (about 21 s).
 2. **Spec.** Write `<name>.fruitcut.json` (below).
 3. **Check stills first.** Run `python3 "$SKILL_DIR/build.py" <spec.json> --snap 1.4,9.9,20.5`. The build prints when each round starts and ends; a round's pieces have fallen open about 0.5 s before its end.
-4. **Build.** Run `python3 "$SKILL_DIR/build.py" <spec.json>`. With a GPU this takes a few minutes. Without one (a server, a VM), Chrome draws in software and the rounds past 100 cuts take around 10 s a frame, so the full reel can take about 40 minutes.
+4. **Build.** Run `python3 "$SKILL_DIR/build.py" <spec.json>`. With a GPU this takes a few minutes. Without one (a server, a VM), Chrome draws in software and the rounds past 100 cuts take around 10 s a frame, so the full reel can take about an hour (64 minutes on a 4-core server).
 5. **Check** the sheet: the counter sits inside the red frame and the pieces stay on screen.
 6. **Hand over** the mp4 path.
 
