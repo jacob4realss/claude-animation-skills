@@ -33,6 +33,7 @@ Needs ffmpeg, Node and Python 3.9+. It renders with WebGL in headless Chrome: ab
 |---|---|
 | `src/shots.js` | **The edit.** `CAPTIONS` (`[start, text, end?]`), `FADES` (dips to black), `DURATION`, one function per shot and the `SHOTS` list (`{start, end, build}`). A shot's `build({makeStage})` returns `{scene, camera, update(t)}`; `update` gets time inside the shot and may return `{dof, bloom, exposure}`. |
 | `src/human.js` | `makeHuman(outfit)`: a poseable cartoon person (`'vest'`, `'chainmail'`, `'plate'`, `'knight'`, `'archer'`). `setPose({joint: [x, y, z]})` for `pelvis spine chest neck head lSh lEl lWr rSh rEl rWr lHip lKn lAn rHip rKn rAn` (+ `drop`), `setMouth(0..1)`, `lerpPose(a, b, t)`, `standArmor(kind)`. |
+| `src/face.js`, `src/sculpt.js` | The head: one smooth sculpted surface (skull, face, nose, lips, hair) blended from signed-distance shapes, plus eyes with lids, eyebrows and ears. `setMouth(v)` opens the jaw (a morph), squeezes the eyes and lifts the brows. Shape the face in `skinShape()`, the hair in `hairline()`/`hairOver()`. The head mesh is built once per page and shared. |
 | `src/props.js` | `pistol`, `gunArm`, `bullet` (with a flatten morph), `sword`, `shield`, `mace`, `arrow`, `bow`, `stand`, `glowSprite`, `sparks`, `streak`, `rippleOverlay` (the red force ripple). |
 | `src/anim.js` | `kf` keyframes, easings, `range`, `cam(fov)`, `place(camera, pos, look)`, `shake`, `ikArm` (2-bone arm IK so hands can grab things). |
 | `src/textures.js`, `src/materials.js` | Canvas-made steel scratches, chain-mail rings, wood, fabric, skin, and the materials built on them. |
@@ -63,6 +64,6 @@ Needs ffmpeg, Node and Python 3.9+. It renders with WebGL in headless Chrome: ab
 For a live preview, serve the project (`python3 -m http.server 8000`) and open `index.html` (click to play with `audio.m4a`), or `index.html?t=14.5` for one frame.
 
 ## Style
-- Bright blue studio sky, soft daylight, metal that reads as metal. Cartoon people are simple shapes with big expressive faces; keep them in proportion with the props.
+- Bright blue studio sky, soft daylight, metal that reads as metal. Cartoon people have simple bodies and smooth, friendly faces (one sculpted head, not parts stuck together); keep them in proportion with the props.
 - Slow motion on the impact, a short camera shake, sparks, bloom on hot things. The red ripple shows force spreading.
 - Quick cuts on caption beats; one dip to black on the "But" turn. Captions are white, bold, 1 to 3 words.

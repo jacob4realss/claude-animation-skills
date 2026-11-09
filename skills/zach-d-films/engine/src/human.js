@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { materials } from './materials.js';
+import { buildFace } from './face.js';
 
 // ---------- torso profile (radius by height in spine space) ----------
 const KEYS = [
@@ -72,11 +73,12 @@ function sph(r, mat, pos = [0, 0, 0], scl = [1, 1, 1], seg = 32) {
 function shadowAll(o) { o.traverse(c => { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; } }); }
 
 // ---------- head ----------
+// people get the sculpted face (face.js); the knight gets a closed helmet
 function buildHead(M, { helmet = false, hood = false } = {}) {
+  if (!helmet) return buildFace(M, { hood });
   const head = new THREE.Group();
-  const jaw = new THREE.Group(); jaw.position.set(0, 0.06, 0.0); head.add(jaw);
-  const parts = {};
-  if (helmet) {
+  const jaw = new THREE.Group(); head.add(jaw);
+  {
     const h = sph(0.128, M.steel, [0, 0.1, 0], [0.92, 1.12, 1.02], 48);
     head.add(h);
     // visor slit + face plate
@@ -92,65 +94,6 @@ function buildHead(M, { helmet = false, hood = false } = {}) {
     shadowAll(head);
     return { head, jaw, setMouth() {} };
   }
-  const skull = sph(0.1, M.skin, [0, 0.095, 0], [0.88, 1.1, 1.0], 48); head.add(skull);
-  const cheeks = sph(0.08, M.skin, [0, 0.06, 0.022], [1.05, 0.85, 1.0], 40); head.add(cheeks);
-  const chin = sph(0.05, M.skin, [0, -0.04, 0.06], [1.0, 0.9, 0.85], 32); jaw.add(chin);
-  const jawM = sph(0.07, M.skin, [0, -0.02, 0.02], [1.08, 0.75, 1.0], 32); jaw.add(jawM);
-  // nose
-  head.add(sph(0.018, M.skin, [0, 0.083, 0.104], [0.85, 2.0, 1.15]));
-  head.add(sph(0.019, M.skin, [0, 0.064, 0.111], [1.25, 0.95, 1.1]));
-  head.add(sph(0.009, M.skin, [-0.012, 0.064, 0.1], [1, 0.8, 1]));
-  head.add(sph(0.009, M.skin, [0.012, 0.064, 0.1], [1, 0.8, 1]));
-  // eyes
-  for (const s of [-1, 1]) {
-    head.add(sph(0.0158, M.eyeWhite, [s * 0.035, 0.11, 0.079]));
-    head.add(sph(0.0085, M.iris, [s * 0.035, 0.11, 0.0915], [1, 1, 0.5])); head.add(sph(0.0042, M.mouth, [s * 0.035, 0.11, 0.0948], [1, 1, 0.4]));
-    const lid = new THREE.Mesh(new THREE.SphereGeometry(0.0168, 24, 12, 0, Math.PI * 2, 0, 1.25), M.skin);
-    lid.position.set(s * 0.035, 0.11, 0.079); lid.rotation.x = 0.25; head.add(lid);
-    parts['lid' + s] = lid;
-    const brow = new THREE.Mesh(new THREE.CapsuleGeometry(0.0042, 0.032, 4, 8), M.hair);
-    brow.scale.z = 0.6; brow.rotation.z = Math.PI / 2 + s * 0.12; brow.position.set(s * 0.036, 0.134, 0.093); head.add(brow);
-    parts['brow' + s] = brow;
-    head.add(sph(0.024, M.skin, [s * 0.087, 0.098, -0.005], [0.38, 1, 0.7]));
-  }
-  // hair (cap) + sideburns
-  const hairG = new THREE.SphereGeometry(0.106, 48, 24, 0, Math.PI * 2, 0, 1.45);
-  const hair = new THREE.Mesh(hairG, M.hair);
-  hair.scale.set(0.9, 1.1, 1.02); hair.position.set(0, 0.103, -0.006); hair.rotation.x = -0.42; head.add(hair);
-  const quiff = sph(0.07, M.hair, [0.01, 0.19, 0.035], [1.1, 0.55, 0.9]); quiff.rotation.z = -0.2; head.add(quiff);
-  for (const s of [-1, 1]) head.add(sph(0.02, M.hair, [s * 0.083, 0.118, -0.002], [0.32, 1.3, 0.9]));
-  // goatee + moustache
-  jaw.add(sph(0.02, M.beard, [0, -0.055, 0.088], [1.0, 1.1, 0.45]));
-  const mst = new THREE.Mesh(new THREE.CapsuleGeometry(0.0055, 0.042, 4, 8), M.beard);
-  mst.scale.z = 0.6; mst.rotation.z = Math.PI / 2; mst.position.set(0, 0.043, 0.104); head.add(mst);
-  parts.mst = mst;
-  // stubble shell on jaw
-  const stub = sph(0.071, M.beard, [0, -0.02, 0.022], [1.09, 0.76, 1.01], 32);
-  stub.material = M.beard.clone(); stub.material.transparent = true; stub.material.opacity = 0.2;
-  jaw.add(stub);
-  // mouth
-  const mouth = sph(0.02, M.mouth, [0, 0.026, 0.097], [1.1, 0.1, 0.45]); head.add(mouth);
-  const lipU = sph(0.02, M.lip, [0, 0.031, 0.099], [1.1, 0.16, 0.42]); head.add(lipU);
-  const lipL = sph(0.019, M.lip, [0, 0.019, 0.096], [1.0, 0.2, 0.42]); jaw.add(lipL); lipL.position.y -= 0.06;
-  const teeth = sph(0.016, M.teeth, [0, 0.03, 0.093], [1.2, 0.3, 0.4]); head.add(teeth);
-  if (hood) {
-    const hd = new THREE.Mesh(new THREE.SphereGeometry(0.135, 48, 24, 0, Math.PI * 2, 0, 2.0), M.cloth);
-    hd.scale.set(0.95, 1.12, 1.08); hd.position.set(0, 0.095, -0.025); hd.rotation.x = -0.75; head.add(hd);
-  }
-  shadowAll(head);
-  function setMouth(v) {
-    jaw.rotation.x = v * 0.22;
-    mouth.scale.set(1.1 + v * 0.4, 0.1 + v * 1.7, 0.45);
-    mouth.position.y = 0.026 - v * 0.012;
-    teeth.visible = v > 0.15; teeth.position.y = 0.03 + v * 0.002;
-    lipU.position.y = 0.032 + v * 0.004;
-    parts.mst.position.y = 0.043 + v * 0.004;
-    parts['brow-1'].position.y = parts['brow1'].position.y = 0.136 - v * 0.006;
-    parts['brow-1'].rotation.z = Math.PI / 2 - 0.18 - v * 0.25;
-    parts['brow1'].rotation.z = Math.PI / 2 + 0.18 + v * 0.25;
-    for (const s of [-1, 1]) parts['lid' + s].rotation.x = 0.25 + v * 0.9;
-  }
-  return { head, jaw, setMouth };
 }
 
 function fist(M, mat, side) {
@@ -187,8 +130,10 @@ export function makeHuman(outfit = 'plate', opts = {}) {
 
   // neck + head
   const neck = new THREE.Group(); neck.position.y = 0.36; chest.add(neck);
-  const neckM = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.055, 0.12, 24), knight ? M.steelDark : M.skin);
-  neckM.position.y = 0.04; neck.add(neckM);
+  if (knight) { // the sculpted face carries its own neck
+    const neckM = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.055, 0.12, 24), M.steelDark);
+    neckM.position.y = 0.04; neck.add(neckM);
+  }
   const H = buildHead(M, { helmet: knight, hood: outfit === 'archer' });
   H.head.position.y = 0.085; neck.add(H.head);
   j.neck = neck; j.head = H.head;
