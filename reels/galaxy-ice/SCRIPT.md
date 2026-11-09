@@ -30,3 +30,12 @@ out as the pieces spread. It never cuts, and at 30 s it is back at its 0 s posit
 ## Notes
 - **Piece counts.** Cuts are split across the three axes. 1 → 2, 2 → 4, 10 → 80 and 100 → 40,460 pieces are modelled exactly. 1,000 cuts would be 335 × 334 × 334 ≈ 37 million pieces, each under 2 px on screen. That round is drawn as a 48 × 48 × 48 grid (110,592 real 3D blocks), the finest this machine renders in a reasonable time. The counter shows the real number of cuts.
 - **Everything is frame-driven.** Poses come from closed-form functions of the frame number, and piles come from a seeded height-map stacker, so every render is identical and pieces never end up inside each other.
+
+## Posting
+
+**Title / caption:** I cut a frozen galaxy 1,000 times 🧊🌌
+
+**Pinned comment:**
+> Which one would you keep on your desk? 💜 Purple nebula, 💙 electric-blue spiral, 💚 emerald aurora, 🩷 pink with golden planets, or 🧡 the amber one that turned into a pile of stars? Watch it loop: it puts itself back together at the end 👀
+
+**Thumbnail:** `docs/thumbnail.jpg`, frame 1446 (24.1 s) of the finished video: the amber burst landing under "1,000 CUTS".
