@@ -96,28 +96,43 @@ function hairOver(st, skin, x, y, z, hood) {
 
 const CAVITY = [0, 0.007, 0.095, 0.0215, 0.02, 0.015];   // shallow dark mouth, so the mesh stays even
 
+// a smile lifts and widens the mouth corners and plumps the cheeks: the shape is evaluated at warped points
+function smileWarp(x, y, z, s) {
+  if (!s) return [x, y];
+  const ax = Math.abs(x), front = smoothstep(0.05, 0.085, z);
+  const corner = Math.exp(-(((ax - 0.021) / 0.011) ** 2) - (((y - MOUTH_Y) / 0.014) ** 2)) * front;
+  const cheek = Math.exp(-(((ax - 0.042) / 0.018) ** 2) - (((y - 0.058) / 0.018) ** 2)) * front;
+  const widen = 1 - 0.07 * Math.exp(-(((y - MOUTH_Y) / 0.012) ** 2)) * front;
+  return [x * (1 - (1 - widen) * s * 1.3), y - s * (0.0095 * corner + 0.0045 * cheek)];
+}
+
 function headParts(look) {
   const F = FACES[look.face] || FACES.m, st = HAIR_STYLES[look.hair] || HAIR_STYLES.short;
   const { skinShape, LIP_U, LIP_L } = makeShape(F);
-  const skinOnly = (a) => (x, y, z) => { const [ry, rz] = warp(y, z, a); return smin(skinShape(x, ry, rz), neck(x, y, z), 0.014); };
-  const headSDF = (a) => {
-    const skin = skinOnly(a);
+  // a = jaw opening (radians), sm = smile 0..1
+  const skinOnly = (a, sm = 0) => (x, y, z) => {
+    const [sx, sy] = smileWarp(x, y, z, sm), [ry, rz] = warp(sy, z, a);
+    return smin(skinShape(sx, ry, rz), neck(x, y, z), 0.014);
+  };
+  const headSDF = (a, sm = 0) => {
+    const skin = skinOnly(a, sm);
     return (x, y, z) => {
       let d = hairOver(st, skin(x, y, z), x, y, z, look.hood);
-      if (!a) d = smax(d, -ell(x, y, z, 0, MOUTH_Y, 0.099, 0.0205, 0.0013, 0.012), 0.002);   // lip line
+      const [sx, sy] = smileWarp(x, y, z, sm);
+      if (!a) d = smax(d, -ell(sx, sy, z, 0, MOUTH_Y, 0.099, 0.0205, 0.0013, 0.012), 0.002);  // lip line
       else d = smax(d, -ell(x, y, z, ...CAVITY), 0.004);                                       // open mouth
       return d;
     };
   };
-  const headColor = (a) => (x, y, z) => {
-    const [ry, rz] = warp(y, z, a);
+  const headColor = (a, sm = 0) => (x, y, z) => {
+    const [sx, sy] = smileWarp(x, y, z, sm), [ry, rz] = warp(sy, z, a);
     const ax = Math.abs(x);
     let c = R.skin;
     const cheek = Math.exp(-((ax - 0.046) ** 2 + (y - 0.066) ** 2 + (z - 0.075) ** 2) / 0.0004);
     c = mix(c, R.blush, (look.face === 'f' ? 0.32 : 0.22) * cheek);
-    const lips = Math.min(LIP_U(x, ry, rz), LIP_L(x, ry, rz));
+    const lips = Math.min(LIP_U(sx, ry, rz), LIP_L(sx, ry, rz));
     c = mix(c, R.lip, smoothstep(0.0028, 0.0004, lips) * smoothstep(0.08, 0.09, rz) * (look.face === 'f' ? 1.25 : 1));
-    const inner = a ? ell(x, y, z, CAVITY[0], CAVITY[1], CAVITY[2], CAVITY[3] + 0.001, CAVITY[4] + 0.001, CAVITY[5] + 0.001) : ell(x, y, z, 0, MOUTH_Y, 0.099, 0.021, 0.0018, 0.013);
+    const inner = a ? ell(x, y, z, CAVITY[0], CAVITY[1], CAVITY[2], CAVITY[3] + 0.001, CAVITY[4] + 0.001, CAVITY[5] + 0.001) : ell(sx, sy, z, 0, MOUTH_Y, 0.099, 0.021, 0.0018, 0.013);
     return mix(c, R.mouth, smoothstep(0.0012, -0.0006, inner));     // hair colour is drawn in the shader (crisp edge)
   };
   return { F, st, skinOnly, headSDF, headColor };
@@ -130,7 +145,8 @@ function headAssets(look) {
   if (geoCache.has(key)) return geoCache.get(key);
   const P = headParts(look);
   const head = sculpt(
-    [{ sdf: P.headSDF(0), color: P.headColor(0) }, { sdf: P.headSDF(JAW_OPEN), color: P.headColor(JAW_OPEN) }],
+    [{ sdf: P.headSDF(0), color: P.headColor(0) }, { sdf: P.headSDF(JAW_OPEN), color: P.headColor(JAW_OPEN) },
+      { sdf: P.headSDF(0, 1), color: P.headColor(0, 1) }],                              // morphs: open, smile
     { center: [0, 0.09, 0.0], wSeg: 256, hSeg: 192, tMax: 0.3 },
   );
   // eyebrows sit on the surface
@@ -285,7 +301,7 @@ export function buildFace(M, look = {}) {
   const jaw = new THREE.Group(); head.add(jaw);              // kept for the old API; the jaw is a morph now
   const skin = new THREE.Mesh(A.head, FM.face);
   skin.castShadow = skin.receiveShadow = true;
-  skin.morphTargetInfluences = [0];
+  skin.morphTargetInfluences = [0, 0];
   head.add(skin);
   const eyes = [1, -1].map(s => makeEye(M, FM, s, fem));
   eyes.forEach(e => head.add(e.g));
@@ -314,10 +330,11 @@ export function buildFace(M, look = {}) {
     hd.castShadow = hd.receiveShadow = true; head.add(hd);
   }
 
-  // setFace: mouth 0..1 open; lids -0.4 (wide) .. 1 (shut); brows raise (+) or lower (-);
+  // setFace: mouth 0..1 open; smile 0..1; lids -0.4 (wide) .. 1 (shut); brows raise (+) or lower (-);
   // browTilt + lifts the inner ends (worried, pained), - pulls them down (stern, angry)
-  function setFace({ mouth = 0, lids = 0, brows: up = 0, browTilt = 0 } = {}) {
+  function setFace({ mouth = 0, smile = 0, lids = 0, brows: up = 0, browTilt = 0 } = {}) {
     skin.morphTargetInfluences[0] = mouth;
+    skin.morphTargetInfluences[1] = smile;
     for (const e of eyes) {
       e.upper.rotation.x = -0.2 + lids * 0.55;
       e.lower.rotation.x = -Math.max(0, lids) * 0.42;
