@@ -5,7 +5,13 @@ import { BokehPass } from 'three/addons/postprocessing/BokehPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
-import { SHOTS, CAPTIONS, DURATION, FADES } from './shots.js';
+import * as SHOT_MODULE from './shots.js';
+const { SHOTS, CAPTIONS, DURATION, FADES } = SHOT_MODULE;
+// optional karaoke captions: shots.js exports CAPTION_WORDS, the start time of every caption word in order;
+// the word being spoken gets class "hl" (style it in index.html)
+const WORD_STARTS = SHOT_MODULE.CAPTION_WORDS || null;
+const CAP_WORDS = WORD_STARTS ? (() => { let k = 0; return CAPTIONS.map(c => c[1].split(' ').map(w => [w, WORD_STARTS[k++] ?? c[0]])); })() : null;
+const esc = (x) => x.replace(/[&<>]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[ch]));
 import { FLOOR } from './human.js';
 
 const W = 720, H = 1280;
@@ -148,8 +154,11 @@ window.renderAt = (t) => {
   grade.uniforms.uTime.value = t;
   composer.render();
   // captions + fades
-  const c = CAPTIONS.filter(c => t >= c[0]).pop();
-  capEl.textContent = c && (c[2] == null || t < c[2]) ? c[1] : '';
+  const ci = CAPTIONS.findLastIndex(c => t >= c[0]), c = CAPTIONS[ci];
+  const showCap = c && (c[2] == null || t < c[2]);
+  if (!CAP_WORDS) capEl.textContent = showCap ? c[1] : '';
+  else if (!showCap) capEl.innerHTML = '';
+  else { const ws = CAP_WORDS[ci], on = ws.findLastIndex(([, st]) => t >= st); capEl.innerHTML = ws.map(([w], i) => `<span class="${i === on ? 'hl' : ''}">${esc(w)}</span>`).join(' '); }
   let f = 0;
   for (const [a, b, c2, d] of FADES) if (t >= a && t < d) f = Math.max(f, t < b ? (t - a) / (b - a) : t < c2 ? 1 : (d - t) / (d - c2));
   fadeEl.style.opacity = f;
