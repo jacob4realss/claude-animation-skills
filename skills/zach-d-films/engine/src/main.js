@@ -97,7 +97,18 @@ const grade = new ShaderPass({
       c.rgb += (h(vUv*1280.0) - 0.5) * 0.018;
       gl_FragColor = c; }`,
 });
+// one NaN or infinite pixel (a degenerate normal, a blown specular) would be spread across the frame by the
+// bloom as a white haze: clean every pixel before the blur and bloom passes
+const sanitize = new ShaderPass({
+  uniforms: { tDiffuse: { value: null } },
+  vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }`,
+  fragmentShader: `uniform sampler2D tDiffuse; varying vec2 vUv;
+    void main(){ vec4 c = texture2D(tDiffuse, vUv);
+      if (any(isnan(c)) || any(isinf(c))) c = vec4(0.0, 0.0, 0.0, 1.0);
+      gl_FragColor = vec4(min(c.rgb, vec3(12.0)), c.a); }`,
+});
 composer.addPass(renderPass);
+composer.addPass(sanitize);
 composer.addPass(bokeh);
 composer.addPass(bloom);
 composer.addPass(new OutputPass());

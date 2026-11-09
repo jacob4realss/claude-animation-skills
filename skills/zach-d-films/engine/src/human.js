@@ -179,7 +179,8 @@ export function makeHuman(outfit = 'plate', opts = {}) {
       for (let i = 0; i < p.count; i++) { const y = p.getY(i) * m.scale.y + m.position.y + dy; p.setX(i, p.getX(i) * f(y)); p.setZ(i, (p.getZ(i) + m.position.z / (m.scale.z || 1)) * fz(y) - m.position.z / (m.scale.z || 1)); }
       g.computeVertexNormals(); m.geometry = g;
     }
-    for (const k of ['lSh', 'rSh']) { j[k].position.x *= f(0.46); j[k].scale.set(Math.sqrt(w), 1, Math.sqrt(0.5 + 0.5 * w)); }
+    // arms scale evenly (a stretched shoulder joint was one trigger of the NaN pixels main.js now cleans up)
+    for (const k of ['lSh', 'rSh']) { j[k].position.x *= f(0.46); j[k].scale.setScalar(w ** 0.35); }
     for (const k of ['lHip', 'rHip']) j[k].scale.set(Math.sqrt(lw), 1, Math.sqrt(0.5 + 0.5 * lw));
   }
   if (build.height) root.scale.setScalar(build.height);
