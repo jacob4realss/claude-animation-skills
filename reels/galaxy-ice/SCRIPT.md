@@ -17,8 +17,9 @@ out as the pieces spread. It never cuts, and at 30 s it is back at its 0 s posit
 | 10.2–12.4 | 10 quick strokes: 4 vertical, 3 vertical crossways, 3 horizontal (5 × 4 × 4 = 80 pieces). Thin cut lines open as the blade passes. | **10 CUTS** (counts up) | 10 short cuts. |
 | 12.5–13.9 | The 80 blocks hop apart and settle in a loose ring: **emerald aurora with tiny stars**. | *Emerald aurora* | A patter of small taps, chime. |
 | 14.4–15.2 | Swap. | — | Sparkle, thud. |
-| 15.2–17.6 | Accelerated montage: 18 visible strokes sweep 34 + 33 + 33 = 100 cuts. 40,460 pieces. | **100 CUTS** (counts up) | Fast cut flurry. |
-| 17.7–19.2 | The pieces burst into a low pile: **pink galaxy with golden planets** (gold spheres show as discs on the cut faces). | *Pink galaxy + golden planets* | Granular taps, chime. |
+| 15.2–17.3 | Accelerated montage: 18 visible strokes sweep 34 + 33 + 33 = 100 cuts. 40,460 pieces. | **100 CUTS** (counts up) | Fast cut flurry. |
+| 17.3–18.3 | The pieces burst into a low pile: **pink galaxy with golden planets** (gold spheres show as discs on the cut faces). | *Pink galaxy + golden planets* | Granular taps, chime. |
+| 18.3–19.4 | Hold on the pink pile. | — | Chime tail. |
 | 19.4–20.2 | Swap. | — | Sparkle, thud. |
 | 20.2–23.0 | The fastest montage: 24 visible strokes, counter to 1,000. Fine lines web the cube. | **1,000 CUTS** (counts up) | Densest cut flurry, rising. |
 | 23.0–25.2 | The cube scatters: thousands of amber fragments and gold low-poly stars arc out and land in a heaped pile: **amber galaxy**. Camera pulls back and rises. | *Amber galaxy* | Shimmering chime cascade, rain of tiny ice taps. |

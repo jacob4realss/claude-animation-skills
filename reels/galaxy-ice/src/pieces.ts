@@ -57,7 +57,7 @@ export type Layout = {
 
 const PILE = {
   3: { K: 2.25, jit: 0.07, H: [0.35, 0.6], T: [0.55, 0.7], D: 0.5, spin: 0 },
-  4: { K: 1.75, jit: 0.16, H: [0.35, 0.75], T: [0.6, 0.85], D: 0.6, spin: 1 },
+  4: { K: 1.75, jit: 0.16, H: [0.35, 0.7], T: [0.5, 0.68], D: 0.42, spin: 1 },
   5: { K: 1.35, jit: 0.42, H: [0.6, 1.35], T: [0.75, 1.1], D: 0.75, spin: 2 },
 } as Record<number, { K: number; jit: number; H: [number, number]; T: [number, number]; D: number; spin: number }>;
 

@@ -70,8 +70,8 @@ export const ROUNDS: Round[] = [
   },
   {
     id: 4, title: "Pink galaxy + golden planets", galaxy: 3, cuts: 100, grid: [35, 34, 34], t0: 15, drop: true,
-    strokes: strokes([35, 34, 34], ["x", "z", "y"], [6, 6, 6], 15.08, 17.6),
-    mode: "pile", settle: 17.62, reveal: 18.1, pop: 19.45,
+    strokes: strokes([35, 34, 34], ["x", "z", "y"], [6, 6, 6], 15.08, 17.25),
+    mode: "pile", settle: 17.27, reveal: 17.75, pop: 19.45,
   },
   {
     id: 5, title: "Amber galaxy", galaxy: 4, cuts: 1000, grid: [48, 48, 48], t0: 20, drop: true,
