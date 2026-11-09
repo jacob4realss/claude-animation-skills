@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { materials } from './materials.js';
 import { buildFace } from './face.js';
+import { limbGeometry, handGeometry, shoeGeometry, shoeMaterial, SOLE } from './body.js';
 
 // ---------- torso profile (radius by height in spine space) ----------
 const KEYS = [
@@ -23,9 +24,9 @@ export const TORSO_SX = 1.13, TORSO_SZ = 0.66;
 
 // Height. People are about 1.70 m. The hips stay at 0.95 so chests and heads sit where the shots
 // aim and frame them; the legs are shorter than that, so feet stand on FLOOR (makeStage puts the
-// ground there). To change height, change THIGH/SHIN and FLOOR follows.
-const THIGH = 0.39, SHIN = 0.40;
-export const FLOOR = 0.95 - 0.06 - THIGH - SHIN;
+// ground there under the shoe soles). To change height, change THIGH/SHIN and FLOOR follows.
+const THIGH = 0.36, SHIN = 0.36;
+export const FLOOR = 0.95 - 0.06 - THIGH - SHIN - SOLE;
 
 // Lathe shell following the torso. offset(y) can be number or function.
 export function torsoShell(y0, y1, offset, { ridge = 0, segs = 72, rows = 40, flare = 0 } = {}) {
@@ -64,12 +65,6 @@ function rim(y, offset, tube, mat) {
   return m;
 }
 
-function cap(r, len, mat, seg = 20) {
-  const m = new THREE.Mesh(new THREE.CapsuleGeometry(r, len, 8, seg), mat);
-  m.position.y = -len / 2;
-  m.castShadow = m.receiveShadow = true;
-  return m;
-}
 function sph(r, mat, pos = [0, 0, 0], scl = [1, 1, 1], seg = 32) {
   const m = new THREE.Mesh(new THREE.SphereGeometry(r, seg, Math.round(seg * 0.75)), mat);
   m.position.set(...pos); m.scale.set(...scl);
@@ -100,16 +95,6 @@ function buildHead(M, { helmet = false, hood = false } = {}) {
     shadowAll(head);
     return { head, jaw, setMouth() {} };
   }
-}
-
-function fist(M, mat, side) {
-  const g = new THREE.Group();
-  g.add(sph(0.045, mat, [0, -0.055, 0.005], [0.85, 1.05, 0.62]));
-  for (let i = 0; i < 4; i++) g.add(sph(0.014, mat, [-0.027 + i * 0.018, -0.1, 0.022], [1, 1, 1.2]));
-  const th = new THREE.Mesh(new THREE.CapsuleGeometry(0.012, 0.03, 4, 8), mat);
-  th.position.set(side * -0.03, -0.06, 0.03); th.rotation.set(0.6, 0, side * 0.5); g.add(th);
-  shadowAll(g);
-  return g;
 }
 
 // ---------- full character ----------
@@ -144,30 +129,24 @@ export function makeHuman(outfit = 'plate', opts = {}) {
   H.head.position.y = 0.085; neck.add(H.head);
   j.neck = neck; j.head = H.head;
 
-  // arms
+  // arms and legs: tapered limbs whose ends match at the joints, sculpted hands and shoes
+  const mesh = (g, m) => { const o = new THREE.Mesh(g, m); o.castShadow = o.receiveShadow = true; return o; };
   for (const s of [1, -1]) {
     const k = s > 0 ? 'l' : 'r';
     const sh = new THREE.Group(); sh.position.set(s * 0.205, 0.26, -0.005); chest.add(sh);
-    sh.add(sph(0.062 + thick, limbMat, [0, -0.01, 0]));
-    sh.add(cap(0.052 + thick, 0.24, limbMat));
+    sh.add(mesh(limbGeometry(0.058 + thick, 0.045 + thick, 0.3, { bulge: 0.005, at: 0.35 }), limbMat));
     const el = new THREE.Group(); el.position.y = -0.3; sh.add(el);
-    el.add(sph(0.046 + thick, limbMat));
-    el.add(cap(0.043 + thick, 0.21, limbMat));
+    el.add(mesh(limbGeometry(0.0442 + thick, 0.036 + thick, 0.255, { bulge: 0.004, at: 0.3, end: 'hem', flare: 0.003 }), limbMat));
     const wr = new THREE.Group(); wr.position.y = -0.27; el.add(wr);
-    wr.add(fist(M, handMat, s));
+    const hand = mesh(handGeometry(), handMat); if (s < 0) hand.scale.x = -1; wr.add(hand);
     j[k + 'Sh'] = sh; j[k + 'El'] = el; j[k + 'Wr'] = wr;
     // legs
     const hip = new THREE.Group(); hip.position.set(s * 0.095, -0.06, 0); pelvis.add(hip);
-    hip.add(cap(0.078 + thick, THIGH - 0.1, legMat));
+    hip.add(mesh(limbGeometry(0.082 + thick, 0.06 + thick, THIGH, { bulge: 0.004, at: 0.3 }), legMat));
     const kn = new THREE.Group(); kn.position.y = -THIGH; hip.add(kn);
-    kn.add(sph(0.06 + thick, legMat));
-    kn.add(cap(0.056 + thick, SHIN - 0.09, legMat));
+    kn.add(mesh(limbGeometry(0.0592 + thick, 0.047 + thick, SHIN - 0.012, { bulge: 0.006, at: 0.3, end: 'hem', flare: 0.006 }), legMat));
     const an = new THREE.Group(); an.position.y = -SHIN; kn.add(an);
-    const footMat = knight ? M.steel : (outfit === 'archer' ? M.cloth : M.skin);
-    const ank = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.045, 0.11, 20), footMat); ank.position.y = 0.0; an.add(ank);
-    if (!knight) { const cuff = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.05, 20), legMat); cuff.position.y = 0.045; an.add(cuff); }
-    const foot = sph(0.05, footMat, [0, -0.035, 0.05], [0.95, 0.62, 2.3]); an.add(foot);
-    if (!knight && outfit !== 'archer') for (let t = 0; t < 5; t++) an.add(sph(0.011 - t * 0.0008, M.skin, [s * (-0.03 + t * 0.014), -0.055, 0.155 - t * 0.008]));
+    an.add(mesh(shoeGeometry(outfit === 'archer'), knight ? M.steel : shoeMaterial()));
     j[k + 'Hip'] = hip; j[k + 'Kn'] = kn; j[k + 'An'] = an;
   }
 
