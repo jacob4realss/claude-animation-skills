@@ -76,8 +76,7 @@ function shoeColor(x, y, z) {
 }
 export const shoeGeometry = (boot = false) => once('shoe:' + boot, () => sculpt([{ sdf: shoeSDF(boot), color: shoeColor }], { center: [0, -0.03, 0.03], wSeg: 96, hSeg: 72, tMax: 0.25 }));
 
-let SM = null;
-export function shoeMaterial() {
-  if (!SM) SM = new THREE.MeshPhysicalMaterial({ vertexColors: true, roughness: 0.55, clearcoat: 0.35, clearcoatRoughness: 0.5 });
-  return SM;
+// tint multiplies the brown leather (0xffffff keeps it brown, 0x444444 reads black)
+export function shoeMaterial(tint = 0xffffff) {
+  return once('shoeMat:' + tint, () => new THREE.MeshPhysicalMaterial({ vertexColors: true, color: tint, roughness: 0.55, clearcoat: 0.35, clearcoatRoughness: 0.5 }));
 }

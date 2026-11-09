@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { materials } from './materials.js';
-import { buildFace } from './face.js';
+import { buildFace, skinMaterial } from './face.js';
+import { dress, setTorso, fabric, policeCap } from './clothes.js';
 import { limbGeometry, handGeometry, shoeGeometry, shoeMaterial, SOLE } from './body.js';
 
 // ---------- torso profile (radius by height in spine space) ----------
@@ -27,6 +28,8 @@ export const TORSO_SX = 1.13, TORSO_SZ = 0.66;
 // ground there under the shoe soles). To change height, change THIGH/SHIN and FLOOR follows.
 const THIGH = 0.36, SHIN = 0.36;
 export const FLOOR = 0.95 - 0.06 - THIGH - SHIN - SOLE;
+
+setTorso({ torsoR, TORSO_SX, TORSO_SZ });
 
 // Lathe shell following the torso. offset(y) can be number or function.
 export function torsoShell(y0, y1, offset, { ridge = 0, segs = 72, rows = 40, flare = 0 } = {}) {
@@ -75,8 +78,8 @@ function shadowAll(o) { o.traverse(c => { if (c.isMesh) { c.castShadow = true; c
 
 // ---------- head ----------
 // people get the sculpted face (face.js); the knight gets a closed helmet
-function buildHead(M, { helmet = false, hood = false } = {}) {
-  if (!helmet) return buildFace(M, { hood });
+function buildHead(M, { helmet = false, hood = false, look = {} } = {}) {
+  if (!helmet) return buildFace(M, { ...look, hood: hood || look.hood });
   const head = new THREE.Group();
   const jaw = new THREE.Group(); head.add(jaw);
   {
@@ -98,13 +101,19 @@ function buildHead(M, { helmet = false, hood = false } = {}) {
 }
 
 // ---------- full character ----------
-// outfit: 'vest' | 'chainmail' | 'plate' | 'knight' | 'archer'
+// outfit: 'vest' | 'chainmail' | 'plate' | 'knight' | 'archer' | 'dress'
+// opts.look     the face and hair (see face.js): { skin, hair, hairColor, face: 'm' | 'f' }
+// opts.clothes  for 'dress' (see clothes.js): { shirt, jacket, leather, vest, tie, trousers, shoes, police }
+// opts.build    { width, height }: width > 1 is broader (chest, arms, legs), height scales the whole person
 export function makeHuman(outfit = 'plate', opts = {}) {
   const M = materials();
-  const knight = outfit === 'knight';
-  const limbMat = knight ? M.steel : (outfit === 'archer' ? M.clothGrey : M.cloth);
-  const legMat = knight ? M.steel : M.cloth;
-  const handMat = knight ? M.steelDark : M.skin;
+  const look = opts.look || {}, clothes = opts.clothes || {}, build = opts.build || {};
+  const knight = outfit === 'knight', dressed = outfit === 'dress';
+  const sleeveMat = dressed ? (clothes.jacket != null ? (clothes.leather ? null : fabric(M, clothes.jacket, { rough: 0.8, bump: 0.8 })) : fabric(M, clothes.shirt ?? 0xf2f2ee, { rough: 0.85, bump: 0.6 })) : null;
+  let limbMat = knight ? M.steel : (outfit === 'archer' ? M.clothGrey : M.cloth);
+  if (dressed) limbMat = sleeveMat || new THREE.MeshPhysicalMaterial({ color: clothes.jacket, roughness: 0.38, clearcoat: 0.5, clearcoatRoughness: 0.35 });
+  const legMat = knight ? M.steel : dressed ? fabric(M, clothes.trousers ?? 0x26272b) : M.cloth;
+  const handMat = knight ? M.steelDark : skinMaterial(M, look.skin);
   const thick = knight ? 0.014 : 0;
 
   const root = new THREE.Group();
@@ -114,8 +123,11 @@ export function makeHuman(outfit = 'plate', opts = {}) {
   const j = { root, pelvis, spine, chest };
 
   // body: lower torso on spine, upper torso on chest (both lathe pieces)
-  const bodyMat = knight ? M.steel : (outfit === 'archer' ? M.cloth : M.cloth);
-  const lower = new THREE.Mesh(torsoShell(-0.18, 0.2, 0), bodyMat); spine.add(lower);
+  const bodyMat = knight ? M.steel : dressed ? fabric(M, clothes.shirt ?? 0xf2f2ee, { rough: 0.85, bump: 0.6 }) : M.cloth;
+  if (dressed) { // trousers come up to the waist; the shirt is tucked in
+    spine.add(new THREE.Mesh(torsoShell(-0.18, -0.05, 0.002), legMat));
+    spine.add(new THREE.Mesh(torsoShell(-0.06, 0.2, 0), bodyMat));
+  } else spine.add(new THREE.Mesh(torsoShell(-0.18, 0.2, 0), bodyMat));
   const upperG = torsoShell(0.18, 0.58, 0); upperG.translate(0, -0.2, 0);
   const upper = new THREE.Mesh(upperG, bodyMat); chest.add(upper);
 
@@ -125,7 +137,8 @@ export function makeHuman(outfit = 'plate', opts = {}) {
     const neckM = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.055, 0.12, 24), M.steelDark);
     neckM.position.y = 0.04; neck.add(neckM);
   }
-  const H = buildHead(M, { helmet: knight, hood: outfit === 'archer' });
+  const H = buildHead(M, { helmet: knight, hood: outfit === 'archer', look });
+  if (dressed && clothes.police && clothes.cap !== false) { const cap = policeCap(M); cap.position.set(0, 0.156, -0.004); cap.rotation.x = -0.09; H.head.add(cap); }
   H.head.position.y = 0.085; neck.add(H.head);
   j.neck = neck; j.head = H.head;
 
@@ -146,10 +159,30 @@ export function makeHuman(outfit = 'plate', opts = {}) {
     const kn = new THREE.Group(); kn.position.y = -THIGH; hip.add(kn);
     kn.add(mesh(limbGeometry(0.0592 + thick, 0.047 + thick, SHIN - 0.012, { bulge: 0.006, at: 0.3, end: 'hem', flare: 0.006 }), legMat));
     const an = new THREE.Group(); an.position.y = -SHIN; kn.add(an);
-    an.add(mesh(shoeGeometry(outfit === 'archer'), knight ? M.steel : shoeMaterial()));
+    an.add(mesh(shoeGeometry(outfit === 'archer' || clothes.boots), knight ? M.steel : shoeMaterial(clothes.shoes)));
     j[k + 'Hip'] = hip; j[k + 'Kn'] = kn; j[k + 'An'] = an;
   }
 
+  if (dressed) dress(j, M, clothes);
+  // build: broader people scale the spine (chest, arms) and legs; the head keeps its size
+  // broad people get it mostly in the chest and shoulders (a V shape), less at the waist: the torso and
+  // everything worn on it is widened smoothly with height, the shoulders move out and the limbs thicken
+  const w = build.width ?? 1;
+  if (w !== 1) {
+    const lw = 1 + (w - 1) * 0.35;
+    const f = (y) => lw + (w - lw) * Math.min(1, Math.max(0, (y - 0.02) / 0.36)) ** 2 * (3 - 2 * Math.min(1, Math.max(0, (y - 0.02) / 0.36)));
+    const fz = (y) => 0.5 + 0.5 * f(y);
+    for (const [grp, dy] of [[spine, 0], [chest, 0.2]]) for (const m of grp.children) {
+      if (!m.isMesh) continue;
+      if (m.geometry.parameters?.shapes) { m.position.x *= f(m.position.y + dy); m.position.z *= fz(m.position.y + dy); continue; } // badges: move with the surface
+      const g = m.geometry.clone(), p = g.attributes.position;
+      for (let i = 0; i < p.count; i++) { const y = p.getY(i) * m.scale.y + m.position.y + dy; p.setX(i, p.getX(i) * f(y)); p.setZ(i, (p.getZ(i) + m.position.z / (m.scale.z || 1)) * fz(y) - m.position.z / (m.scale.z || 1)); }
+      g.computeVertexNormals(); m.geometry = g;
+    }
+    for (const k of ['lSh', 'rSh']) { j[k].position.x *= f(0.46); j[k].scale.set(Math.sqrt(w), 1, Math.sqrt(0.5 + 0.5 * w)); }
+    for (const k of ['lHip', 'rHip']) j[k].scale.set(Math.sqrt(lw), 1, Math.sqrt(0.5 + 0.5 * lw));
+  }
+  if (build.height) root.scale.setScalar(build.height);
   const armor = {};
   // ----- outfits -----
   if (outfit === 'vest') {
@@ -236,7 +269,7 @@ export function makeHuman(outfit = 'plate', opts = {}) {
   shadowAll(root);
 
   const human = {
-    root, j, armor, setMouth: H.setMouth,
+    root, j, armor, setMouth: H.setMouth, setFace: H.setFace || (() => {}),
     // pose: { joint: [x,y,z] }, all others reset to rest
     setPose(p = {}) {
       for (const k of ['pelvis', 'spine', 'chest', 'neck', 'head', 'lSh', 'lEl', 'lWr', 'rSh', 'rEl', 'rWr', 'lHip', 'lKn', 'lAn', 'rHip', 'rKn', 'rAn']) {
