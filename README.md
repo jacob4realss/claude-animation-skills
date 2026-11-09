@@ -2,7 +2,7 @@
 
 Skills for Claude Code that make animations for reels, with no footage needed. You type `/map-route home to the gym, 2.8 km` and Claude writes the spec, renders the animation on your own computer and checks it against Instagram's safe area.
 
-![The six skills, one frame each](docs/skills.jpg)
+![Six of the skills, one frame each](docs/skills.jpg)
 
 | Skill | What it makes | Try it with |
 |---|---|---|
@@ -11,6 +11,7 @@ Skills for Claude Code that make animations for reels, with no footage needed. Y
 | `/minimalistic-graphics` | **Black-and-white line art.** Hairline steps rise, one white dot hops up them and gets an orbit at the top, with one quiet line of text. | `Every step feels small until you look back` |
 | `/map-route` | **A 3D map route.** A white city, a route that draws itself while the camera follows, a pin drop, an ETA that counts down and a destination card. | `Home to the gym, 2.8 km` |
 | `/breakdown` | **A 3D exploded view.** A phone comes apart layer by layer, and every part gets a leader line and a label. | `My phone, every part labelled` |
+| `/fruit-cut` | **The "1 cut, 2 cuts ... 10,000 cuts" fruit reel.** A fresh 3D watermelon, orange, apple or kiwi each round, a knife or a grid cutter, real peel and flesh on every cut face, and the pieces falling open while a counter climbs. | `A watermelon, 1 to 10,000 cuts` |
 | `/graph` | **A minimal line graph.** A smooth line draws itself, and one big number counts up with its tip. Black on white, or white on black. | `0 to 100K followers in 9 months` |
 
 See them moving: **[novitckii.com/resources/animation-skills](https://novitckii.com/resources/animation-skills/)**
@@ -48,6 +49,7 @@ Open Claude Code anywhere and ask:
 
 ```
 /graph 0 to 100K followers in 9 months: 1.2K, 2.1K, 3.4K, 5K, 9K, 24K, 51K, 78K, 100K
+/fruit-cut a watermelon, 1 cut up to 10,000 cuts
 /map-route home to the gym, 2.8 km, 9 minutes
 /minimalistic-graphics every step feels small until you look back
 /breakdown my phone, label it like a joke
@@ -55,7 +57,7 @@ Open Claude Code anywhere and ask:
 /zach-d-films could ancient armour stop an arrow? (my voiceover is ~/Downloads/vo.m4a)
 ```
 
-**The four quick ones** (`/graph`, `/minimalistic-graphics`, `/map-route`, `/breakdown`) work from a small JSON spec. Claude writes `name.graph.json`, runs the skill's `build.py`, and you get `name.graph.mp4` (1080x1920, 30 fps) plus `name.graph.sheet.jpg`, a contact sheet with Instagram's safe area marked. The 2D ones render in about 10 seconds, the 3D ones in about 1.5 minutes.
+**The quick ones** (`/graph`, `/minimalistic-graphics`, `/map-route`, `/breakdown`, `/fruit-cut`) work from a small JSON spec. Claude writes `name.graph.json`, runs the skill's `build.py`, and you get `name.graph.mp4` (1080x1920, 30 fps) plus `name.graph.sheet.jpg`, a contact sheet with Instagram's safe area marked. The 2D ones render in about 10 seconds, the 3D ones in about 1.5 minutes (`/fruit-cut` is about 21 s long and takes longer; see its SKILL.md).
 
 **The two engines** (`/stick-figure`, `/zach-d-films`) are full explainer reels. Claude copies the example project, writes the script with you, makes or takes the voiceover, times every caption to it, writes the shots in code, checks stills, and renders. Plan on a working session, not one command.
 
@@ -63,7 +65,7 @@ Open Claude Code anywhere and ask:
 
 ```
 skills/<name>/SKILL.md          what Claude follows: steps, the spec, taste rules
-skills/<name>/build.py          spec.json -> template.html -> HyperFrames -> mp4   (graph, minimalistic-graphics, map-route, breakdown)
+skills/<name>/build.py          spec.json -> template.html -> HyperFrames -> mp4   (graph, minimalistic-graphics, map-route, breakdown, fruit-cut)
 skills/<name>/template.html     the animation (GSAP, or three.js for the 3D ones)
 skills/stick-figure/engine/     canvas engine, voice + timing tools, make.sh, and the pirate reel as the template
 skills/zach-d-films/engine/     three.js engine (people, props, effects, renderer) and the armour short as the example

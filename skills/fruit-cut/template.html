@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<style>
+@font-face{font-family:'Inter';font-weight:600;src:url(fonts/inter-600-normal.woff2) format('woff2')}
+@font-face{font-family:'InterTight';font-weight:800;src:url(fonts/inter-tight-latin-800-normal.woff2) format('woff2')}
+@font-face{font-family:'JB';font-weight:500;src:url(fonts/jetbrains-mono-latin-500-normal.woff2) format('woff2')}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1080px;height:1920px;overflow:hidden;background:#17130f}
+#root{position:relative;width:1080px;height:1920px;overflow:hidden;font-family:'Inter',sans-serif;
+  background:radial-gradient(ellipse 90% 60% at 50% 55%,#3a2f26 0%,#211b16 60%,#120f0c 100%)}
+#c{position:absolute;left:0;top:0;width:1080px;height:1920px;display:block}
+#hd{position:absolute;left:0;right:0;top:250px;text-align:center;font:500 26px 'JB';letter-spacing:.2em;color:rgba(255,246,235,.62)}
+#cnt{position:absolute;left:0;right:0;top:296px;text-align:center;font:800 168px/1 'InterTight';letter-spacing:-.03em;color:#fff;
+  text-shadow:0 6px 30px rgba(0,0,0,.45)}
+#pcs{position:absolute;left:0;right:0;top:482px;text-align:center;font:600 42px 'Inter';color:rgba(255,246,235,.82);text-shadow:0 3px 16px rgba(0,0,0,.5)}
+</style>
+<script type="importmap">{"imports":{"three":"./vendor/three/three.module.js","three/addons/":"./vendor/three/addons/"}}</script>
+</head>
+<body>
+<div id="root" data-composition-id="main" data-start="0" data-duration="__DURATION__" data-fps="30" data-width="1080" data-height="1920">
+<canvas id="c" width="1080" height="1920"></canvas>
+<div id="hd"></div><div id="cnt"></div><div id="pcs"></div>
+<script type="module">
+import * as THREE from "three";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+
+const SPEC = __SPEC__;
+const PLAN = SPEC._plan;                       // worked out by build.py: one entry per stage, with its times
+window.__hf = window.__hf || {}; window.__hf.buildReady = window.__hf.buildReady || {};
+let built; window.__hf.buildReady.fruitcut = new Promise((r) => { built = r; });
+await Promise.all([document.fonts.load('800 168px InterTight'), document.fonts.load('600 42px Inter'), document.fonts.load('500 26px JB')]);
+const W = 1080, H = 1920;
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const out3 = (x) => 1 - Math.pow(1 - clamp(x, 0, 1), 3);
+const inOut2 = (x) => { x = clamp(x, 0, 1); return x < .5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2; };
+
+const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('c'), antialias: true, alpha: true });
+renderer.setSize(W, H, false); renderer.setPixelRatio(1); renderer.setClearColor(0x000000, 0);
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;
+const scene = new THREE.Scene();
+const pm = new THREE.PMREMGenerator(renderer);
+scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environmentIntensity = .8;
+const key = new THREE.DirectionalLight(0xfff1e0, 2.4); key.position.set(-4.5, 10, 5.5); scene.add(key);
+scene.add(new THREE.HemisphereLight(0xe8eeff, 0x3a2a1c, .7));
+const camera = new THREE.PerspectiveCamera(30, W / H, .3, 200);
+
+// ------------------------------------------------------------ fruits: shape (radii) and how deep the peel and rind go
+const FRUITS = {
+  watermelon: { id: 0, r: [1.45, 1.0, 1.02], label: 'WATERMELON' },
+  orange:     { id: 1, r: [1.0, .94, 1.0],   label: 'ORANGE' },
+  apple:      { id: 2, r: [1.04, .96, 1.04], label: 'APPLE' },
+  kiwi:       { id: 3, r: [1.3, .86, .9],    label: 'KIWI' },
+};
+const F = FRUITS[SPEC.fruit];
+const RAD = new THREE.Vector3(...F.r);
+const BND = RAD.clone().multiplyScalar(1.03);   // bounding ellipsoid the cut grid spans (slightly bigger than the fruit)
+const CY = RAD.y;                                // fruit centre height: it rests on the board at y = 0
+
+// ------------------------------------------------------------ the board
+{
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 1024; const x = c.getContext('2d');
+  x.fillStyle = '#c79a6a'; x.fillRect(0, 0, 1024, 1024);
+  let s = 7; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 420; i++) {               // long grain lines
+    const y = rnd() * 1024, a = .03 + rnd() * .09, wv = 4 + rnd() * 14;
+    x.strokeStyle = rnd() < .5 ? `rgba(120,78,40,${a})` : `rgba(255,226,180,${a * .8})`; x.lineWidth = .6 + rnd() * 2.4;
+    x.beginPath(); for (let k = 0; k <= 1024; k += 16) x.lineTo(k, y + Math.sin(k / 160 + y) * wv); x.stroke();
+  }
+  for (let i = 0; i < 260; i++) { x.strokeStyle = `rgba(80,50,25,${.05 + rnd() * .08})`; x.lineWidth = .5; const px = rnd() * 1024, py = rnd() * 1024, l = 20 + rnd() * 120, a = (rnd() - .5) * .6;
+    x.beginPath(); x.moveTo(px, py); x.lineTo(px + Math.cos(a) * l, py + Math.sin(a) * l); x.stroke(); }   // knife marks
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  const top = new THREE.MeshStandardMaterial({ map: t, roughness: .62, metalness: 0 });
+  const side = new THREE.MeshStandardMaterial({ color: 0x8e6339, roughness: .7 });
+  const board = new THREE.Mesh(new THREE.BoxGeometry(8.4, .36, 7.2), [side, side, top, side, side, side]);
+  board.position.y = -.18; scene.add(board);
+  const table = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), new THREE.MeshStandardMaterial({ color: 0x2a221b, roughness: .9 }));
+  table.rotation.x = -Math.PI / 2; table.position.y = -.36; scene.add(table);
+}
+// soft contact shadow under the fruit, grows as the pieces spread
+const shadowTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 256; const x = c.getContext('2d');
+  const g = x.createRadialGradient(128, 128, 0, 128, 128, 128); g.addColorStop(0, 'rgba(0,0,0,.62)'); g.addColorStop(.55, 'rgba(0,0,0,.32)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+  x.fillStyle = g; x.fillRect(0, 0, 256, 256); return new THREE.CanvasTexture(c); })();
+const shadow = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false }));
+shadow.rotation.x = -Math.PI / 2; shadow.position.y = .003; scene.add(shadow);
+// juice: once the pieces are far finer than a pixel the fruit is really a purée, so a glossy puddle spreads under it
+const JUICE = { watermelon: '#a8101f', orange: '#d86a04', apple: '#c9ae55', kiwi: '#5a8a0c' }[SPEC.fruit];
+const juiceTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 512; const x = c.getContext('2d');
+  const g = x.createRadialGradient(256, 256, 0, 256, 256, 256); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(.7, 'rgba(255,255,255,.95)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+  x.fillStyle = g; x.beginPath();
+  for (let a = 0; a <= 64; a++) { const t = a / 64 * Math.PI * 2, r = 230 + 18 * Math.sin(t * 5 + 1) + 10 * Math.sin(t * 11); x.lineTo(256 + Math.cos(t) * r, 256 + Math.sin(t) * r); }
+  x.fill(); return new THREE.CanvasTexture(c); })();
+const juice = new THREE.Mesh(new THREE.CircleGeometry(.5, 64), new THREE.MeshStandardMaterial({ color: JUICE, alphaMap: juiceTex, transparent: true,
+  roughness: .3, metalness: 0, envMapIntensity: .35, depthWrite: false }));
+juice.rotation.x = -Math.PI / 2; juice.position.y = .006; scene.add(juice);
+
+// ------------------------------------------------------------ the pieces: one box per piece, the fruit is ray-marched inside it
+// Each piece is (its grid cell) ∩ (the fruit). The fragment shader marches the fruit's signed distance field inside the box,
+// so the peel, the rind and the flesh on every cut face are exact for any number of pieces, and motion is all on the GPU.
+const VERT = /* glsl */`
+attribute vec4 aCell;   // x0 z0 x1 z1
+attribute vec4 aInfo;   // ylo yhi i j
+attribute float aSeed;
+uniform vec2 uB; uniform float uDx, uDz, uGapX, uGapZ, uBloom, uLoose, uDropY, uSpread;
+flat out mat3 vR; flat out vec3 vP; flat out vec3 vO; flat out vec3 vBmin; flat out vec3 vBmax;
+out vec3 vW;
+mat3 rotAxis(vec3 k, float a){ float c = cos(a), s = sin(a), t = 1. - c; return mat3(
+  t*k.x*k.x + c,     t*k.x*k.y + s*k.z, t*k.x*k.z - s*k.y,
+  t*k.x*k.y - s*k.z, t*k.y*k.y + c,     t*k.y*k.z + s*k.x,
+  t*k.x*k.z + s*k.y, t*k.y*k.z - s*k.x, t*k.z*k.z + c); }
+void main(){
+  vec2 c = .5*(aCell.xy + aCell.zw), hw = .5*(aCell.zw - aCell.xy);
+  // the cut lines open a hairline gap as the blade passes them
+  vec3 O = vec3(uGapX*(min(aInfo.z, uDx) - .5*uDx), uDropY, uGapZ*(min(aInfo.w, uDz) - .5*uDz));
+  float r = length(c/uB);
+  vec2 dir = length(c) > 1e-5 ? normalize(c) : vec2(0.);
+  float h1 = fract(aSeed*7.131), h2 = fract(aSeed*13.77), h3 = fract(aSeed*3.917);
+  // pieces fall outward: the outer ones first and flat, the middle ones stand (looser = more of them fall)
+  float theta = radians(89.)*smoothstep(.04 - .3*uLoose, .62 - .5*uLoose, r + .08*(h1 - .5)) * (.92 + .08*h3);
+  float delay = .16*(1. - clamp(r, 0., 1.)) + .1*h2;
+  float dur = .38 + .14*h1;
+  float p = clamp((uBloom - delay)/dur, 0., 1.);
+  float fall = p*p;
+  float land = max(uBloom - delay - dur, 0.);
+  float ang = theta*(fall - step(1., p)*sin(land*20.)*exp(-land*10.)*.07);
+  float dq = clamp(uBloom/.22, 0., 1.);
+  O.y -= aInfo.x*dq*dq;                        // drop to the board
+  O.xz += dir*uSpread*r*fall*(.7 + .6*h2);     // and slide out a little
+  O.xz -= dir*.5*(aInfo.y - aInfo.x)*sin(ang)*clamp(2.*hw.x/(aInfo.y - aInfo.x + 1e-3) + .3, 0., 1.); // chunky pieces roll rather than pivot
+  vec3 P = vec3(c.x + dir.x*(hw.x*abs(dir.x) + hw.y*abs(dir.y)), aInfo.x, c.y + dir.y*(hw.x*abs(dir.x) + hw.y*abs(dir.y)));
+  vec3 k = length(dir) > 0. ? normalize(vec3(dir.y, 0., -dir.x)) : vec3(1., 0., 0.);
+  vR = rotAxis(k, ang); vP = P; vO = O;
+  vBmin = vec3(aCell.x, aInfo.x, aCell.y); vBmax = vec3(aCell.z, aInfo.y, aCell.w);
+  vec3 po = mix(vBmin - .003, vBmax + .003, position);
+  vec3 pw = vR*(po - P) + P + O;
+  vW = pw;
+  gl_Position = projectionMatrix*viewMatrix*vec4(pw, 1.);
+}`;
+const FRAG = /* glsl */`
+precision highp float;
+flat in mat3 vR; flat in vec3 vP; flat in vec3 vO; flat in vec3 vBmin; flat in vec3 vBmax;
+in vec3 vW;
+uniform mat4 projectionMatrix;
+uniform int uFruit; uniform vec3 uRad; uniform float uCy;
+float hash(vec3 p){ p = fract(p*.3183099 + .1); p *= 17.; return fract(p.x*p.y*p.z*(p.x + p.y + p.z)); }
+float noise(vec3 x){ vec3 i = floor(x), f = fract(x); f = f*f*(3. - 2.*f);
+  return mix(mix(mix(hash(i), hash(i + vec3(1,0,0)), f.x), mix(hash(i + vec3(0,1,0)), hash(i + vec3(1,1,0)), f.x), f.y),
+             mix(mix(hash(i + vec3(0,0,1)), hash(i + vec3(1,0,1)), f.x), mix(hash(i + vec3(0,1,1)), hash(i + vec3(1,1,1)), f.x), f.y), f.z); }
+float fbm(vec3 p){ return .5*noise(p) + .25*noise(p*2.03) + .125*noise(p*4.01); }
+float sdEll(vec3 p, vec3 r){ float k0 = length(p/r), k1 = length(p/(r*r)); return k0*(k0 - 1.)/k1; }
+float smax(float a, float b, float k){ float h = clamp(.5 - .5*(b - a)/k, 0., 1.); return mix(b, a, h) + k*h*(1. - h); }
+float sdf(vec3 p){
+  vec3 q = p - vec3(0., uCy, 0.);
+  float d = sdEll(q, uRad);
+  if (uFruit == 2) {                            // apple: dimples at the stem and the base
+    d = smax(d, -(length(q - vec3(0., uRad.y + .12, 0.)) - .3), .16);
+    d = smax(d, -(length(q - vec3(0., -uRad.y - .2, 0.)) - .3), .12);
+  }
+  return d;
+}
+vec3 nrm(vec3 p){ const vec2 e = vec2(.0015, -.0015);
+  return normalize(e.xyy*sdf(p + e.xyy) + e.yyx*sdf(p + e.yyx) + e.yxy*sdf(p + e.yxy) + e.xxx*sdf(p + e.xxx)); }
+vec3 lin(vec3 c){ return pow(c, vec3(2.2)); }
+// seeds: a jittered lattice, one candidate per cell
+float seeds(vec3 u, float scale, vec3 stretch, float size){
+  vec3 g = u*scale, i = floor(g), f = fract(g);
+  vec3 o = vec3(hash(i), hash(i + 17.1), hash(i + 31.7))*.6 + .2;
+  return length((f - o)*stretch) - size;
+}
+// colour of the fruit at p; depth = how far inside the skin (0 on the peel)
+vec3 albedo(vec3 p, float depth, out float gloss){
+  vec3 q = p - vec3(0., uCy, 0.);
+  vec3 u = q/uRad;                             // unit-sphere coordinates
+  gloss = .35;
+  if (uFruit == 0) {                           // watermelon, long axis x
+    if (depth < .04) {
+      float a = atan(q.z, q.y);
+      float st = sin(a*9. + 3.*fbm(q*2.2) + 1.2*sin(q.x*2.));
+      vec3 dk = vec3(.07, .22, .06), lt = vec3(.40, .58, .22);
+      gloss = .55; return mix(dk, lt, smoothstep(-.15, .35, st)*(.75 + .25*noise(q*14.)));
+    }
+    if (depth < .15) return mix(vec3(.80, .89, .62), vec3(.93, .74, .66), smoothstep(.09, .15, depth));
+    float ru = length(u);
+    vec3 fl = mix(vec3(.90, .17, .2), vec3(.97, .36, .37), .35*fbm(q*9.) + .35*smoothstep(.55, 0., ru));
+    if (ru > .38 && ru < .74) {
+      float sd = seeds(u, 6.5, vec3(1., 1.9, 1.9), .085);
+      if (sd < 0.) return hash(floor(u*6.5) + 5.) < .12 ? vec3(.92, .88, .76) : vec3(.05, .03, .02);
+    }
+    gloss = .45; return fl;
+  }
+  if (uFruit == 1) {                           // orange
+    if (depth < .05) { gloss = .5; return mix(vec3(.98, .46, .04), vec3(.92, .36, .02), noise(q*42.)); }
+    if (depth < .11) return vec3(.98, .92, .76);
+    float a = atan(q.z, q.x), rho = length(q.xz);
+    if (rho < .08) return vec3(.98, .9, .72);
+    float sg = fract(a/6.2831853*11.);
+    float mem = min(sg, 1. - sg)*6.2831853/11.*rho;
+    if (mem < .011) return vec3(.99, .88, .62);
+    gloss = .6;
+    return mix(vec3(1., .58, .1), vec3(1., .72, .25), fbm(vec3(a*9., rho*26., q.y*6.)));
+  }
+  if (uFruit == 2) {                           // apple
+    if (depth < .025) {
+      float a = atan(q.z, q.x);
+      gloss = .65; return mix(vec3(.66, .05, .06), vec3(.93, .72, .2), .55*smoothstep(.55, .85, fbm(vec3(a*7., q.y*1.6, 0.)))*smoothstep(-.6, .2, u.y));
+    }
+    float a = atan(q.z, q.x), rho = length(q.xz);
+    float yc = clamp(1. - abs(q.y)/.55, 0., 1.);             // the core is widest in the middle, closing to the stem
+    float core = (.24 + .05*cos(5.*a - 1.57))*sqrt(yc);
+    vec3 fl = mix(vec3(.97, .92, .70), vec3(.94, .86, .60), .5*fbm(q*7.));
+    if (rho < core) fl = mix(vec3(.90, .86, .62), fl, .45);
+    if (yc > 0. && abs(rho - core) < .014) return vec3(.80, .74, .48);
+    float sa = fract(a/6.2831853*5. - .25 + .5) - .5;          // five seeds, one facing +z so a cut through the middle shows them
+    vec2 sp = vec2(sa*6.2831853/5.*max(rho, .02), rho - .13);
+    if (length(vec2(sp.x*2.2, sp.y*2.6)) + abs(q.y + .02)*.55 < .07) return vec3(.36, .2, .08);
+    gloss = .5; return fl;
+  }
+  // kiwi, long axis x
+  if (depth < .03) { gloss = .1; return mix(vec3(.38, .26, .13), vec3(.55, .42, .25), noise(q*60.)); }
+  float rho = length(u.yz), a = atan(u.z, u.y);
+  if (rho < .2) return vec3(.94, .95, .78);
+  vec3 fl = mix(vec3(.47, .74, .12), vec3(.32, .58, .07), smoothstep(.25, .95, rho) + .25*noise(vec3(a*40., rho*3., q.x*4.)));
+  if (rho > .22 && rho < .44) {                               // a ring of small black seeds around the core
+    float fa = a/6.2831853*30., k = floor(fa), jit = hash(vec3(k, floor(q.x*7.), 3.));
+    if (length(vec2((fract(fa) - .5)*1.7, (rho - .29 - .07*jit)*15.)) < .45) return vec3(.06, .05, .03);
+  }
+  gloss = .55; return fl;
+}
+void main(){
+  vec3 rdw = normalize(vW - cameraPosition);
+  mat3 Rt = transpose(vR);
+  vec3 ro = Rt*(cameraPosition - vP - vO) + vP;
+  vec3 rd = Rt*rdw;
+  vec3 inv = 1./rd, t0 = (vBmin - ro)*inv, t1 = (vBmax - ro)*inv;
+  vec3 tn = min(t0, t1), tf = max(t0, t1);
+  float tN = max(max(tn.x, tn.y), tn.z), tF = min(min(tf.x, tf.y), tf.z);
+  if (tN > tF || tF < 0.) discard;
+  float t = max(tN, 0.);
+  vec3 p = ro + rd*t;
+  float d = sdf(p);
+  vec3 n; float depth;
+  if (d < 0.) {                                // entered through a cut face
+    n = tN == tn.x ? vec3(-sign(rd.x), 0., 0.) : tN == tn.y ? vec3(0., -sign(rd.y), 0.) : vec3(0., 0., -sign(rd.z));
+    depth = -d;
+  } else {
+    bool hit = false;
+    for (int i = 0; i < 48; i++) {
+      d = sdf(p);
+      if (d < .0012) { hit = true; break; }
+      t += max(d, .001);
+      if (t > tF) break;
+      p = ro + rd*t;
+    }
+    if (!hit) discard;
+    n = nrm(p); depth = 0.;
+  }
+  float gloss;
+  vec3 alb = lin(albedo(p, depth, gloss));
+  vec3 nw = normalize(vR*n);
+  vec3 hp = vR*(p - vP) + vP + vO;             // the hit in world space
+  vec3 L = normalize(vec3(-.45, 1., .55)), V = -rdw, Hh = normalize(L + V);
+  float diff = max(dot(nw, L), 0.);
+  vec3 amb = mix(vec3(.30, .24, .2), vec3(.62, .66, .74), nw.y*.5 + .5);
+  float ao = .5 + .5*smoothstep(0., .45, hp.y);
+  float sp = pow(max(dot(nw, Hh), 0.), mix(18., 90., gloss))*gloss*(depth > 0. ? .9 : .7);
+  float fr = pow(1. - max(dot(nw, V), 0.), 4.)*.18;
+  vec3 col = alb*(amb*.8*ao + diff*vec3(1., .95, .88)*1.25*mix(.6, 1., ao)) + vec3(sp) + fr*vec3(.8, .85, 1.)*ao;
+  vec4 clip = projectionMatrix*viewMatrix*vec4(hp, 1.);
+  gl_FragDepth = clip.z/clip.w*.5 + .5;
+  gl_FragColor = vec4(col, 1.);
+  #include <tonemapping_fragment>
+  #include <colorspace_fragment>
+}`;
+
+const CAP = SPEC.max_grid;   // pieces per side we actually draw; past this a piece is narrower than a couple of pixels
+const unitBox = new THREE.BoxGeometry(1, 1, 1).translate(.5, .5, .5);
+function piecesMesh(nx, nz) {
+  const cells = [], info = [], seed = [];
+  const fx = (i) => -BND.x + 2 * BND.x * i / nx, fz = (j) => -BND.z + 2 * BND.z * j / nz;
+  for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
+    const x0 = fx(i), x1 = fx(i + 1), z0 = fz(j), z1 = fz(j + 1);
+    const cx = clamp(0, x0, x1) / BND.x, cz = clamp(0, z0, z1) / BND.z;   // closest point of the cell to the middle
+    const s = 1 - cx * cx - cz * cz;
+    if (s <= 0) continue;
+    const half = BND.y * Math.sqrt(s);
+    cells.push(x0, z0, x1, z1); info.push(Math.max(0, CY - half), CY + half, i, j);
+    seed.push(((Math.sin(i * 127.1 + j * 311.7) * 43758.5453) % 1 + 1) % 1);
+  }
+  const g = new THREE.InstancedBufferGeometry(); g.index = unitBox.index; g.setAttribute('position', unitBox.attributes.position);
+  g.setAttribute('aCell', new THREE.InstancedBufferAttribute(new Float32Array(cells), 4));
+  g.setAttribute('aInfo', new THREE.InstancedBufferAttribute(new Float32Array(info), 4));
+  g.setAttribute('aSeed', new THREE.InstancedBufferAttribute(new Float32Array(seed), 1));
+  g.instanceCount = seed.length;
+  const m = new THREE.ShaderMaterial({ vertexShader: VERT, fragmentShader: FRAG, uniforms: {
+    uB: { value: new THREE.Vector2(BND.x, BND.z) }, uDx: { value: 0 }, uDz: { value: 0 }, uGapX: { value: 0 }, uGapZ: { value: 0 },
+    uBloom: { value: 0 }, uLoose: { value: 0 }, uDropY: { value: 0 }, uSpread: { value: 0 },
+    uFruit: { value: F.id }, uRad: { value: RAD }, uCy: { value: CY } } });
+  const mesh = new THREE.Mesh(g, m); mesh.frustumCulled = false; mesh.visible = false; scene.add(mesh);
+  return mesh;
+}
+
+// ------------------------------------------------------------ the blades: a chef's knife for a few cuts, a grid cutter for many
+const steel = new THREE.MeshStandardMaterial({ color: 0xd9dde2, metalness: 1, roughness: .2 });
+const knife = new THREE.Group();
+{
+  const L = 3.9, Hb = .95;
+  const s = new THREE.Shape(); s.moveTo(0, 0); s.lineTo(L, 0); s.quadraticCurveTo(L - .2, Hb * .55, L - 1.2, Hb); s.lineTo(0, Hb); s.lineTo(0, 0);
+  const blade = new THREE.Mesh(new THREE.ExtrudeGeometry(s, { depth: .025, bevelEnabled: true, bevelSize: .008, bevelThickness: .008, bevelSegments: 2 }), steel);
+  blade.position.set(-L / 2, 0, -.0125);
+  const handle = new THREE.Mesh(new THREE.BoxGeometry(1.5, .32, .16), new THREE.MeshStandardMaterial({ color: 0x23160e, roughness: .45 }));
+  handle.position.set(-L / 2 - .72, Hb - .2, 0);
+  [-.4, 0, .4].forEach((dx) => { const r = new THREE.Mesh(new THREE.CylinderGeometry(.035, .035, .18, 16), steel); r.rotation.x = Math.PI / 2; r.position.set(-L / 2 - .72 + dx, Hb - .2, 0); knife.add(r); });
+  knife.add(blade, handle);
+  scene.add(knife); knife.visible = false;
+}
+const grid = new THREE.Group(); scene.add(grid); grid.visible = false;
+const gridBlades = [];
+function buildGrid(nx, nz) {
+  grid.clear();
+  const n = Math.max(nx, nz);
+  const th = clamp(.6 / n, .0035, .02), hh = .42;
+  const mk = (count, alongX) => {
+    if (count < 1) return;
+    const m = new THREE.InstancedMesh(new THREE.BoxGeometry(alongX ? 2 * BND.x + .3 : th, hh, alongX ? th : 2 * BND.z + .3), steel, count);
+    const o = new THREE.Object3D();
+    for (let k = 0; k < count; k++) {
+      if (alongX) o.position.set(0, hh / 2, -BND.z + 2 * BND.z * (k + 1) / (count + 1)); else o.position.set(-BND.x + 2 * BND.x * (k + 1) / (count + 1), hh / 2, 0);
+      o.updateMatrix(); m.setMatrixAt(k, o.matrix);
+    }
+    grid.add(m);
+  };
+  mk(nx - 1, false); mk(nz - 1, true);
+  const fm = new THREE.MeshStandardMaterial({ color: 0x2b2f35, metalness: .6, roughness: .35 });
+  const bx = 2 * BND.x + .5, bz = 2 * BND.z + .5, ft = .12;
+  [[bx, ft, 0, -bz / 2], [bx, ft, 0, bz / 2], [ft, bz, -bx / 2, 0], [ft, bz, bx / 2, 0]].forEach(([w, d, x, z]) => {
+    const b = new THREE.Mesh(new THREE.BoxGeometry(w, .2, d), fm); b.position.set(x, hh - .05, z); grid.add(b);
+  });
+}
+
+// ------------------------------------------------------------ stages
+const stages = PLAN.map((s) => {
+  const nx = Math.min(s.v + 1, CAP), nz = Math.min(s.h + 1, CAP);
+  return { ...s, nx, nz, mesh: piecesMesh(nx, nz) };
+});
+document.getElementById('hd').textContent = (SPEC.title || F.label).toUpperCase();
+const cntEl = document.getElementById('cnt'), pcsEl = document.getElementById('pcs');
+const fmt = (n) => n.toLocaleString('en-US');
+let gridFor = null;
+
+function renderAt(t) {
+  let si = stages.findIndex((s) => t < s.t0 + s.dur);
+  if (si < 0) si = stages.length - 1;
+  const S = stages[si], lt = t - S.t0;
+  stages.forEach((s, i) => { s.mesh.visible = i === si; });
+  const u = S.mesh.material.uniforms;
+  const topY = 2 * CY + .25;
+
+  // the fruit drops in and lands with a small bounce
+  const dp = clamp(lt / S.drop, 0, 1);
+  u.uDropY.value = dp < 1 ? 5 * (1 - dp) * (1 - dp) : .12 * Math.sin((lt - S.drop) * 22) * Math.exp(-(lt - S.drop) * 14);
+  const cellX = 2 * BND.x / S.nx, cellZ = 2 * BND.z / S.nz;
+  u.uGapX.value = Math.min(.035, cellX * .14); u.uGapZ.value = Math.min(.035, cellZ * .14);
+  const mush = clamp(Math.log10((S.v + 1) / CAP) / Math.log10(50), 0, 1);   // how far past the drawable limit this round is
+  u.uLoose.value = clamp(Math.log10(S.pieces) / 5, 0, 1.5) * SPEC.loose;
+  u.uSpread.value = .15 + .3 * Math.min(u.uLoose.value, 1) + .5 * mush;
+  const vLines = S.nx - 1, hLines = S.nz - 1;
+  const c0 = S.drop, c1 = S.drop + S.cut;
+  knife.visible = false; grid.visible = false;
+  if (S.mode === 'knife') {
+    const n = vLines + hLines, slot = S.cut / Math.max(n, 1);
+    const k = clamp(Math.floor((lt - c0) / slot), 0, n - 1), f = clamp((lt - c0) / slot - k, 0, 1);
+    const dn = smooth(0, .45, f), done = (lt - c0) / slot;
+    const op = (d, n) => { d = clamp(d, 0, n); const i = Math.floor(d); return i >= n ? n : i + smooth(.15, .45, d - i); };
+    u.uDx.value = op(done, vLines);                               // vertical lines first, then horizontal
+    u.uDz.value = op(done - vLines, hLines);
+    if (lt > c0 - .25 && lt < c1 + .3) {
+      knife.visible = true;
+      const vert = k < vLines;
+      const idx = vert ? k + 1 : k - vLines + 1;
+      const pos = vert ? -BND.x + 2 * BND.x * idx / S.nx : -BND.z + 2 * BND.z * idx / S.nz;
+      const Y = topY + .9;
+      let y = Y * (1 - dn + smooth(.55, 1, f));
+      if (lt < c0) y = Y + (c0 - lt) * 6; if (lt > c1) y = Y + (lt - c1) * 6;
+      knife.position.set(vert ? pos : 0, y, vert ? 0 : pos);
+      knife.rotation.set(0, vert ? -Math.PI / 2 : Math.PI, 0);
+      knife.rotateZ(.06 * Math.sin(f * Math.PI));
+    }
+  } else {
+    if (gridFor !== S) { buildGrid(S.nx, S.nz); gridFor = S; }
+    const f = clamp((lt - c0) / S.cut, 0, 1);
+    const down = out3(f / .45), up = smooth(.62, 1, f);
+    const y = (topY + .25) * (1 - down) + (topY + 1.4) * up + (lt < c0 ? (c0 - lt) * 8 : 0);
+    if (lt > c0 - .3 && lt < c1 + .25) { grid.visible = true; grid.position.y = y + (lt > c1 ? (lt - c1) * 9 : 0); }
+    const open = smooth(.35, .55, f);
+    u.uDx.value = vLines * open; u.uDz.value = hLines * open;
+  }
+  u.uBloom.value = Math.max(0, lt - c1 - .05);
+  // shadow grows with the spread
+  const sp = smooth(0, .8, u.uBloom.value) * (1 + u.uLoose.value);
+  shadow.scale.set(BND.x * 2.3 * (1 + .55 * sp), BND.z * 2.3 * (1 + .55 * sp), 1);
+  shadow.material.opacity = lt < S.drop ? .3 + .7 * dp : 1;
+  const jp = smooth(.1, 1.1, u.uBloom.value) * mush;
+  juice.visible = jp > 0; juice.material.opacity = .9 * Math.min(1, jp * 2);
+  juice.scale.setScalar(2 * Math.max(BND.x, BND.z) * (.8 + 1.25 * jp));
+
+  // camera: a 3/4 view from above, easing back as the pieces spread; slow drift through the whole reel
+  const az = THREE.MathUtils.degToRad(SPEC.angle + 8 * smooth(0, PLAN.at(-1).t0 + PLAN.at(-1).dur, t));
+  const el = THREE.MathUtils.degToRad(52 - 6 * smooth(0, 1, u.uBloom.value));
+  const dist = 9.6 * (1 + smooth(0, .9, u.uBloom.value) * (S.mode === 'knife' ? .85 : .5 + .2 * Math.min(u.uLoose.value, 1) + .35 * mush)) * Math.max(BND.x, BND.z) / 1.45;
+  camera.position.set(Math.sin(az) * Math.cos(el) * dist, Math.sin(el) * dist, Math.cos(az) * Math.cos(el) * dist);
+  camera.lookAt(0, .35, 0);
+  camera.setViewOffset(W, H, 0, -170, W, H);
+
+  // counter
+  const pop = out3((lt - .05) / .25);
+  cntEl.textContent = `${fmt(S.cuts)} ${S.cuts === 1 ? 'CUT' : 'CUTS'}`;
+  cntEl.style.transform = `scale(${1.25 - .25 * pop})`; cntEl.style.opacity = pop;
+  pcsEl.textContent = `${fmt(S.pieces)} pieces`;
+  pcsEl.style.opacity = smooth(c1, c1 + .3, lt);
+  renderer.render(scene, camera);
+}
+window.addEventListener('hf-seek', (e) => renderAt(e.detail.time));
+renderAt(window.__hfThreeTime || 0);
+built(true);
+</script>
+</div>
+</body></html>
